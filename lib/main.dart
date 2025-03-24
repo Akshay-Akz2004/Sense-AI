@@ -5,6 +5,7 @@ import 'package:cloudinary_flutter/cloudinary_context.dart';
 import 'package:cloudinary_flutter/image/cld_image.dart';
 import 'package:cloudinary_url_gen/cloudinary.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'widgets/emergency_gesture_detector.dart';
 
 Future<void> main() async {
   CloudinaryContext.cloudinary =
@@ -22,31 +23,33 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Healthcare Login',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: 'Poppins',
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.1),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+    return EmergencyGestureDetector(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Healthcare Login',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          fontFamily: 'Poppins',
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.1),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            hintStyle: TextStyle(color: Colors.white70),
+            contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           ),
-          hintStyle: TextStyle(color: Colors.white70),
-          contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         ),
+        home: const AuthWidget(),
       ),
-      home: const AuthWidget(),
     );
   }
 }
 
 class AuthWidget extends StatelessWidget {
   const AuthWidget({Key? key}) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
@@ -307,66 +310,65 @@ class _LoginFormState extends State<LoginForm> {
   }
 
   Future<void> _signIn() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
 
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
 
-    try {
-      final res = await Supabase.instance.client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-
-      if (res.session != null) {
-        final userId = res.user!.id;
-
-        // ✅ Fetch user profile from Supabase
-        final profile = await Supabase.instance.client
-            .from('profiles')
-            .select()
-            .eq('user_id', userId)
-            .single();
-
-        // ✅ Store user details in local state (optional)
-        if (profile != null) {
-          print("Guardian Name: ${profile['guardian_name']}");
-          print("Username: ${profile['username']}");
-          print("Patient Name: ${profile['patient_name']}");
-        }
-
-        setState(() {
-          _isLoading = false;
-        });
-
-        // ✅ Navigate to HomeScreen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+      try {
+        final res = await Supabase.instance.client.auth.signInWithPassword(
+          email: email,
+          password: password,
         );
-      } else {
+
+        if (res.session != null) {
+          final userId = res.user!.id;
+
+          // ✅ Fetch user profile from Supabase
+          final profile = await Supabase.instance.client
+              .from('profiles')
+              .select()
+              .eq('user_id', userId)
+              .single();
+
+          // ✅ Store user details in local state (optional)
+          if (profile != null) {
+            print("Guardian Name: ${profile['guardian_name']}");
+            print("Username: ${profile['username']}");
+            print("Patient Name: ${profile['patient_name']}");
+          }
+
+          setState(() {
+            _isLoading = false;
+          });
+
+          // ✅ Navigate to HomeScreen
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        } else {
+          setState(() {
+            _isLoading = false;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Login failed, please try again.")),
+          );
+        }
+      } catch (e) {
         setState(() {
           _isLoading = false;
         });
-
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Login failed, please try again.")),
+          SnackBar(content: Text(e.toString())),
         );
       }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
     }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -479,67 +481,64 @@ class _RegisterFormState extends State<RegisterForm> {
   }
 
   Future<void> _signUp() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
 
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    final guardianName = _guardianNameController.text.trim();
-    final username = _usernameController.text.trim();
-    final patientName = _patientNameController.text.trim();
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      final guardianName = _guardianNameController.text.trim();
+      final username = _usernameController.text.trim();
+      final patientName = _patientNameController.text.trim();
 
-    try {
-      // 1. Register user with metadata using Supabase Auth.
-      final res = await Supabase.instance.client.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          'guardian_name': guardianName,
-          'username': username,
-          'patient_name': patientName,
-        },
-      );
+      try {
+        // 1. Register user with metadata using Supabase Auth.
+        final res = await Supabase.instance.client.auth.signUp(
+          email: email,
+          password: password,
+          data: {
+            'guardian_name': guardianName,
+            'username': username,
+            'patient_name': patientName,
+          },
+        );
 
-      // 2. Even if email verification is required, res.user is created.
-      if (res.user != null) {
-        final userId = res.user!.id;
+        // 2. Even if email verification is required, res.user is created.
+        if (res.user != null) {
+          final userId = res.user!.id;
 
-        // 3. Insert additional user details into the profiles table.
-        //    If there's an error, it will throw an exception caught by the catch block.
-        await Supabase.instance.client.from('profiles').insert({
-          'user_id': userId,
-          'guardian_name': guardianName,
-          'username': username,
-          'patient_name': patientName,
-          'email': email,
+          // 3. Insert additional user details into the profiles table.
+          //    If there's an error, it will throw an exception caught by the catch block.
+          await Supabase.instance.client.from('profiles').insert({
+            'user_id': userId,
+            'guardian_name': guardianName,
+            'username': username,
+            'patient_name': patientName,
+            'email': email,
+          });
+        }
+
+        setState(() {
+          _isLoading = false;
         });
+
+        // 4. Navigate to HomeScreen regardless of email verification.
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } catch (e) {
+        // If any exception is thrown (including from the insert call), it lands here.
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
       }
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      // 4. Navigate to HomeScreen regardless of email verification.
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    } catch (e) {
-      // If any exception is thrown (including from the insert call), it lands here.
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
     }
   }
-}
-
-
-
 
   @override
   Widget build(BuildContext context) {

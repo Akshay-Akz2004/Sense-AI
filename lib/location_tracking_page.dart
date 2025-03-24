@@ -16,6 +16,10 @@ class _LocationTrackingPageState extends State<LocationTrackingPage> {
   String statusMessage = '';
   bool isTracking = false;
 
+  String _generateGoogleMapsUrl(double latitude, double longitude) {
+    return 'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -77,6 +81,7 @@ class _LocationTrackingPageState extends State<LocationTrackingPage> {
         'user_id': userId,
         'latitude': position.latitude,
         'longitude': position.longitude,
+        'timestamp': DateTime.now().toIso8601String(),
       });
 
       setState(() {
@@ -122,6 +127,7 @@ class _LocationTrackingPageState extends State<LocationTrackingPage> {
       final locationData = locationRes as Map<String, dynamic>;
       final double latitude = locationData['latitude'];
       final double longitude = locationData['longitude'];
+      final String timestamp = locationData['timestamp'];
 
       // Retrieve guardian email from profiles table.
       final profileRes = await Supabase.instance.client
@@ -140,29 +146,42 @@ class _LocationTrackingPageState extends State<LocationTrackingPage> {
       final profileData = profileRes as Map<String, dynamic>;
       final guardianEmail = profileData['email'];
 
-      // Compose email content.
-      final subject = 'Blind Person Latest Location';
-      final body = 'The latest location is:\n'
-          'Latitude: $latitude\n'
-          'Longitude: $longitude';
+      // Generate Google Maps URL
+      final mapsUrl = _generateGoogleMapsUrl(latitude, longitude);
+      final formattedTime = DateTime.parse(timestamp).toString().split('.')[0];
 
-      // Configure SMTP settings (using Gmail as an example).
+      // Configure SMTP settings
       String username = 'seeing37ai@gmail.com';
-      String password = 'bwxb xzhq vrgu yabq'; // Use an app-specific password for Gmail.
+      String password = 'bwxb xzhq vrgu yabq';
 
       final smtpServer = gmail(username, password);
 
       final message = Message()
-        ..from = Address(username, 'Sense AI')
+        ..from = Address(username, 'Sense AI Location Tracker')
         ..recipients.add(guardianEmail)
-        ..subject = subject
-        ..text = body;
+        ..subject = 'Sense AI: Latest Location Update'
+        ..text = '''
+Dear Guardian,
+
+This is an automated location update from the Sense AI system.
+
+Latest Location Details:
+- Latitude: $latitude
+- Longitude: $longitude
+- Time: $formattedTime
+- Google Maps Link: $mapsUrl
+
+You can click the Google Maps link above to view the exact location in your preferred mapping application.
+
+Best regards,
+Sense AI Location Tracking System
+''';
 
       // Send the email.
       final sendReport = await send(message, smtpServer);
 
       setState(() {
-        statusMessage = 'Email sent to guardian successfully!';
+        statusMessage = 'Location update sent to guardian successfully!';
       });
       print('Message sent: ' + sendReport.toString());
     } catch (e) {
